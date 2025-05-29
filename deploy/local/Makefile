@@ -5,7 +5,7 @@ DIST_UI_DIR := $(abspath $(lastword $(MAKEFILE_LIST)/../../../frontend))
 
 setup_local:
 	mkdir -p ~/.local
-	ollama run llama3.2:3b-instruct-fp16 --keepalive 160m &
+	ollama run qwen2.5vl:latest --keepalive 160m &
 
 	@if podman inspect -f '{{.State.Running}}' llamastack 2>/dev/null | grep -q true; then \
 		echo "llamastack is already running."; \
@@ -14,10 +14,10 @@ setup_local:
 		podman rm -fv --depend llamastack 2>/dev/null || true; \
 		podman run --platform linux/amd64 -d -v llamastack:/root/.llama \
 			-p 8321:8321 \
-			--env INFERENCE_MODEL="meta-llama/Llama-3.2-3B-Instruct" \
-			--env OLLAMA_URL=http://host.containers.internal:11434 \
+			--env INFERENCE_MODEL="deepseek-v2:16b" \
+			--env OLLAMA_URL=http://10.0.2.15:11434 \
 			--name llamastack \
-			llamastack/distribution-ollama:0.2.6; \
+			docker.io/llamastack/distribution-ollama:0.2.6; \
 	fi
 
 run_ui:
@@ -31,15 +31,15 @@ run_ui:
 			--env LLAMA_STACK_ENDPOINT=http://host.containers.internal:8321 \
 			--env TAVILY_SEARCH_API_KEY=$(TAVILY_SEARCH_API_KEY) \
 			--name ui \
-			llamastack-dist-ui:$(VERSION); \
+			docker.io/llamastack-dist-ui:$(VERSION); \
 	fi
 
 run_ui_local:
 	cd ../../frontend && \
 	python3.11 -m venv .venv && \
-	source .venv/bin/activate && \
+	. .venv/bin/activate && \
 	pip install -r requirements.txt && \
-	streamlit run llama_stack/distribution/ui/app.py
+	streamlit run llama_stack/distribution/ui/app.py --server.port 7860 --server.address 0.0.0.0
 
 build_ui:
 	podman build --platform linux/amd64 -t llamastack-dist-ui:$(VERSION) -f $(DIST_UI_DIR)/Containerfile $(DIST_UI_DIR)
